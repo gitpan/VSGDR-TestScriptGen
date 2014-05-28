@@ -1,0 +1,38 @@
+use 5.010;
+use strict;
+use warnings;
+use ExtUtils::MakeMaker;
+
+WriteMakefile(
+    NAME                => 'VSGDR::TestScriptGen',
+    AUTHOR              => q{Ded MedVed <dedmedved@cpan>},
+    VERSION_FROM        => 'lib/VSGDR/TestScriptGen.pm',
+    ABSTRACT_FROM       => 'lib/VSGDR/TestScriptGen.pm',
+    MIN_PERL_VERSION    => 5.10.0,
+    ($ExtUtils::MakeMaker::VERSION >= 6.3002
+      ? ('LICENSE'=> 'perl')
+      : ()),
+    PL_FILES            => {},
+    EXE_FILES => [ "genTests.pl", 
+                 ],
+    PREREQ_PM => {
+        'Test::More'            => 0,
+        'Carp'                  => 0,
+        'DBD::ODBC'             => 0,
+        'DBI'                   => 0,
+        'Data::Dumper'          => 0,
+        'File::Basename'        => 0,
+        'Getopt::Euclid'        => 0,
+        'IO::File'              => 0,
+        'List::Util'            => 1.00,
+        'POSIX'                 => 0,
+        'autodie'               => 0,
+        'indirect'              => 0,
+        'version'               => 0,
+    },
+    dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
+    clean               => { FILES => 'TestScriptGen-*' },
+);
+
+
+
