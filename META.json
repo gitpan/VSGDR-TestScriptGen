@@ -1,5 +1,5 @@
 {
-   "abstract" : "Unit test script support package for SSDT unit tests, Ded MedVed..\r",
+   "abstract" : "Unit test script support package for SSDT unit tests, Ded MedVed.\r",
    "author" : [
       "Ded MedVed <dedmedved@cpan>"
    ],
@@ -50,5 +50,5 @@
       }
    },
    "release_status" : "stable",
-   "version" : "0.01"
+   "version" : "0.02"
 }

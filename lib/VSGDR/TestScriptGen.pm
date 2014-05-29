@@ -15,15 +15,15 @@ use File::Basename;
 
 =head1 NAME
 
-VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded MedVed..
+VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded MedVed.
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 
 sub databaseName {
@@ -72,25 +72,39 @@ return <<"EOF" ;
 
 
 ; with BASE as (
-SELECT  cast([PARAMETER_NAME] + ' = ' + [PARAMETER_NAME] + case when PARAMETER_MODE = 'IN' then '' else  'OUTPUT' + CHAR(10) + CHAR(13) end as VARCHAR(MAX)) as PARAMTER
-,		cast([PARAMETER_NAME] + '  ' + DATA_TYPE+coalesce('('+cast(CHARACTER_MAXIMUM_LENGTH as varchar)+')','') + CHAR(10) + CHAR(13) as VARCHAR(MAX)) as DECLARATION
-,       [SPECIFIC_CATALOG]
-,       [SPECIFIC_SCHEMA]
-,       [SPECIFIC_NAME]
+SELECT  case when ROUTINE_TYPE = 'PROCEDURE' then cast([PARAMETER_NAME] + ' = ' + [PARAMETER_NAME] + case when PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as VARCHAR(MAX)) 
+             when ROUTINE_TYPE = 'FUNCTION'  then cast([PARAMETER_NAME] + CHAR(10) as VARCHAR(MAX)) 
+        end  as PARAMTER
+--      cast([PARAMETER_NAME] + ' = ' + [PARAMETER_NAME] + case when PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as VARCHAR(MAX)) as PARAMTER
+,		cast([PARAMETER_NAME] + '  ' + P.DATA_TYPE+coalesce('('+cast(P.CHARACTER_MAXIMUM_LENGTH as varchar)+')','') + CHAR(10) as VARCHAR(MAX)) as DECLARATION
+,       R.[SPECIFIC_CATALOG]
+,       R.[SPECIFIC_SCHEMA]
+,       R.[SPECIFIC_NAME]
 ,       [ORDINAL_POSITION]
 ,       [PARAMETER_MODE]
-FROM    [CallValidate].[INFORMATION_SCHEMA].[PARAMETERS]
+FROM    [INFORMATION_SCHEMA].[PARAMETERS] P
+JOIN    INFORMATION_SCHEMA.ROUTINES R
+on      R.[SPECIFIC_NAME]           = P.[SPECIFIC_NAME]
+and     R.[SPECIFIC_SCHEMA]         = P.[SPECIFIC_SCHEMA]
+and     R.[SPECIFIC_CATALOG]        = P.[SPECIFIC_CATALOG]
 where   1=1 
 and     ORDINAL_POSITION = 1
 union all 
-select  cast(PARAMTER + ',' + N.[PARAMETER_NAME] + ' = ' + N.[PARAMETER_NAME] + case when N.PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) + CHAR(13) end as varchar(max))
-,		cast(DECLARATION + ',' + [PARAMETER_NAME] + '  ' + DATA_TYPE+coalesce('('+cast(CHARACTER_MAXIMUM_LENGTH as varchar)+')','') + CHAR(10) + CHAR(13) as VARCHAR(MAX))
+select  cast(PARAMTER + ',' +   case when ROUTINE_TYPE = 'PROCEDURE' then cast(N.[PARAMETER_NAME] + ' = ' + N.[PARAMETER_NAME] + case when N.PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as VARCHAR(MAX)) 
+                                     when ROUTINE_TYPE = 'FUNCTION'  then cast(N.[PARAMETER_NAME] + CHAR(10) as VARCHAR(MAX)) 
+                                end as VARCHAR(MAX)) as PARAMTER                            
+--N.[PARAMETER_NAME] + ' = ' + N.[PARAMETER_NAME] + case when N.PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as varchar(max))
+,		cast(DECLARATION + ',' + [PARAMETER_NAME] + '  ' + N.DATA_TYPE+coalesce('('+cast(N.CHARACTER_MAXIMUM_LENGTH as varchar)+')','') + CHAR(10) as VARCHAR(MAX))
 ,       N.[SPECIFIC_CATALOG]
 ,       N.[SPECIFIC_SCHEMA]
 ,       N.[SPECIFIC_NAME]
 ,       N.[ORDINAL_POSITION]
 ,       N.[PARAMETER_MODE]
 from    [INFORMATION_SCHEMA].[PARAMETERS] N 
+JOIN    INFORMATION_SCHEMA.ROUTINES R
+on      R.[SPECIFIC_NAME]           = N.[SPECIFIC_NAME]
+and     R.[SPECIFIC_SCHEMA]         = N.[SPECIFIC_SCHEMA]
+and     R.[SPECIFIC_CATALOG]        = N.[SPECIFIC_CATALOG]
 join    BASE B
 on      N.[SPECIFIC_NAME]           = B.[SPECIFIC_NAME]
 and     N.[SPECIFIC_SCHEMA]         = B.[SPECIFIC_SCHEMA]
@@ -106,14 +120,21 @@ from    BASE
 select * from ALLL where RN = 1
 )
 select  R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME as sp
-,	coalesce('declare ' + DECLARATION,'')		as DECLARATION
-,       'execute ' + R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME + ' ' + coalesce(B.PARAMTER,'') as sql 
+,	    case when ROUTINE_TYPE = 'FUNCTION' and DATA_TYPE != 'TABLE' 
+             then 'declare ' + coalesce(DECLARATION+',','') + '\@RC ' + DATA_TYPE+coalesce('('+cast(CHARACTER_MAXIMUM_LENGTH as varchar)+')','')
+             else coalesce('declare ' + DECLARATION,'')
+        end as DECLARATION
+,       case when ROUTINE_TYPE = 'PROCEDURE' then 'execute ' + R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME + ' ' + coalesce(B.PARAMTER,'') 
+             when ROUTINE_TYPE = 'FUNCTION' and DATA_TYPE = 'TABLE'  then 'select * from ' + R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME + '(' + coalesce(B.PARAMTER,'')  + ')'
+             when ROUTINE_TYPE = 'FUNCTION' and DATA_TYPE != 'TABLE' then 'select \@RC = ' + R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME + '(' + coalesce(B.PARAMTER,'')  + ')'
+             else '-- unknown routine type'
+        end as sql 
 from    INFORMATION_SCHEMA.ROUTINES R
 LEFT    JOIN    PARAMS B
 on      R.[SPECIFIC_NAME]           = B.[SPECIFIC_NAME]
 and     R.[SPECIFIC_SCHEMA]         = B.[SPECIFIC_SCHEMA]
 and     R.[SPECIFIC_CATALOG]        = B.[SPECIFIC_CATALOG]
-where   R.ROUTINE_TYPE = 'PROCEDURE'
+where   R.ROUTINE_TYPE in( 'PROCEDURE','FUNCTION')
 
 EOF
 
@@ -242,7 +263,7 @@ __DATA__
 
 =head1 SYNOPSIS
 
-Package to support the generation of stored procedure unit test scripts for SQL Server Data Tools.
+Package to support the generation of stored procedure unit test scripts for SQL Server Data Tools projects.
 
 =head1 AUTHOR
 
@@ -264,7 +285,7 @@ You can find documentation for this module with the perldoc command.
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2013 Ded MedVed.
+Copyright 2014 Ded MedVed.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
