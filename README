@@ -29,7 +29,7 @@ QUICK START GUIDE
 Here's a quick overview of how to get started with using the system:-
 
 To generate outline stored procedure test scripts, type this at a command line:-
-    genTestScriptGen -c namedODBCConnectionToYourInstanceAndDatabase 
+    genTestScriptGen -c namedODBCConnectionToYourInstanceAndDatabase -f DummyOutputFileName_FilesWillBeCreatedInThisDirectory
 
 
 OTHER

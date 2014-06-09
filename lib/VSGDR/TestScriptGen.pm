@@ -19,11 +19,11 @@ VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 
 sub databaseName {
@@ -70,13 +70,12 @@ sub ExecSpSQL {
 
 return <<"EOF" ;
 
-
 ; with BASE as (
 SELECT  case when ROUTINE_TYPE = 'PROCEDURE' then cast([PARAMETER_NAME] + ' = ' + [PARAMETER_NAME] + case when PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as VARCHAR(MAX)) 
              when ROUTINE_TYPE = 'FUNCTION'  then cast([PARAMETER_NAME] + CHAR(10) as VARCHAR(MAX)) 
         end  as PARAMTER
 --      cast([PARAMETER_NAME] + ' = ' + [PARAMETER_NAME] + case when PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as VARCHAR(MAX)) as PARAMTER
-,		cast([PARAMETER_NAME] + '  ' + P.DATA_TYPE+coalesce('('+cast(P.CHARACTER_MAXIMUM_LENGTH as varchar)+')','') + CHAR(10) as VARCHAR(MAX)) as DECLARATION
+,		cast([PARAMETER_NAME] + '  ' + P.DATA_TYPE+coalesce('('+case when P.CHARACTER_MAXIMUM_LENGTH = -1 then 'max' else cast(P.CHARACTER_MAXIMUM_LENGTH as varchar) end+')','') + CHAR(10) as VARCHAR(MAX)) as DECLARATION
 ,       R.[SPECIFIC_CATALOG]
 ,       R.[SPECIFIC_SCHEMA]
 ,       R.[SPECIFIC_NAME]
@@ -94,7 +93,7 @@ select  cast(PARAMTER + ',' +   case when ROUTINE_TYPE = 'PROCEDURE' then cast(N
                                      when ROUTINE_TYPE = 'FUNCTION'  then cast(N.[PARAMETER_NAME] + CHAR(10) as VARCHAR(MAX)) 
                                 end as VARCHAR(MAX)) as PARAMTER                            
 --N.[PARAMETER_NAME] + ' = ' + N.[PARAMETER_NAME] + case when N.PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as varchar(max))
-,		cast(DECLARATION + ',' + [PARAMETER_NAME] + '  ' + N.DATA_TYPE+coalesce('('+cast(N.CHARACTER_MAXIMUM_LENGTH as varchar)+')','') + CHAR(10) as VARCHAR(MAX))
+,		cast(DECLARATION + ',' + [PARAMETER_NAME] + '  ' + N.DATA_TYPE+coalesce('('+case when N.CHARACTER_MAXIMUM_LENGTH = -1 then 'max' else cast(N.CHARACTER_MAXIMUM_LENGTH as varchar) end +')','') + CHAR(10) as VARCHAR(MAX))
 ,       N.[SPECIFIC_CATALOG]
 ,       N.[SPECIFIC_SCHEMA]
 ,       N.[SPECIFIC_NAME]

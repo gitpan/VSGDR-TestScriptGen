@@ -2,3 +2,7 @@ Revision history for VSGDR::TestScriptGen
 
 0.01    28/05/2014
         First version, released on an unsuspecting world.  Broken.
+0.02    29/05/2014
+        Added db function support.
+0.03    09/06/2014
+        Handles varchar(max)
