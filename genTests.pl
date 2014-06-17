@@ -19,20 +19,21 @@ use IO::File ;
 use File::Basename;
 
 
-use version ; our $VERSION = qv('0.01');
+use version ; our $VERSION = qv('0.02');
 
-croak 'no input file'  unless defined($opt_outfile) ;
+croak 'no input file'           unless defined($main::opt_outfile) ;
 my $outfile;
-$outfile = $opt_outfile;
+$outfile                                = $main::opt_outfile;
 my($infname, $directories, $insfx)      = fileparse($outfile , qr/\..*/);
-croak 'Invalid input file'   unless defined $insfx ;
+croak 'Invalid input file'      unless defined $insfx ;
 
-my $dbh             = DBI->connect("dbi:ODBC:${opt_connection}", q{}, q{}, { LongReadLen => 512000, AutoCommit => 1, RaiseError => 1 });
+my $dbh                                 = DBI->connect("dbi:ODBC:${main::opt_connection}", q{}, q{}, { LongReadLen => 512000, AutoCommit => 1, RaiseError => 1 });
+my $dbh_typeinfo                        = DBI->connect("dbi:ODBC:${main::opt_connection}", q{}, q{}, { LongReadLen => 512000, AutoCommit => 1, RaiseError => 1 });
 
 
 
-my $staticDataScript = VSGDR::TestScriptGen::generateScripts($dbh,$directories) ;
-#say $staticDataScript; 
+my $void = VSGDR::TestScriptGen::generateScripts($dbh,$dbh_typeinfo,$directories) ;
+
 
 exit ;
 
@@ -53,7 +54,7 @@ genTests.pl - Creates unit test scripts for a database
 
 =head1 VERSION
 
-0.01
+0.02
 
 
 =head1 USAGE

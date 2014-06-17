@@ -39,9 +39,11 @@
             "File::Basename" : "0",
             "Getopt::Euclid" : "0",
             "IO::File" : "0",
+            "List::MoreUtils" : "0",
             "List::Util" : "1",
             "POSIX" : "0",
             "Test::More" : "0",
+            "Try::Tiny" : "0",
             "autodie" : "0",
             "indirect" : "0",
             "perl" : "0",
@@ -50,5 +52,5 @@
       }
    },
    "release_status" : "stable",
-   "version" : "0.03"
+   "version" : "0.04"
 }

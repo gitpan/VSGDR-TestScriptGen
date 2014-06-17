@@ -6,3 +6,5 @@ Revision history for VSGDR::TestScriptGen
         Added db function support.
 0.03    09/06/2014
         Handles varchar(max)
+0.04    16/06/2014
+        Defaults values fon non-nullable parameters.  Better formatting of output.

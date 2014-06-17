@@ -6,12 +6,14 @@ use warnings;
 use 5.010;
 
 use List::Util qw(max);
+use List::MoreUtils;
 use POSIX qw(strftime);
 use Carp;
 use DBI;
 use Data::Dumper;
 use IO::File ;
 use File::Basename;
+use Try::Tiny;
 
 =head1 NAME
 
@@ -19,11 +21,11 @@ VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =cut
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 
 sub databaseName {
@@ -72,10 +74,10 @@ return <<"EOF" ;
 
 ; with BASE as (
 SELECT  case when ROUTINE_TYPE = 'PROCEDURE' then cast([PARAMETER_NAME] + ' = ' + [PARAMETER_NAME] + case when PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as VARCHAR(MAX)) 
-             when ROUTINE_TYPE = 'FUNCTION'  then cast([PARAMETER_NAME] + CHAR(10) as VARCHAR(MAX)) 
+             when ROUTINE_TYPE = 'FUNCTION'  then cast([PARAMETER_NAME] as VARCHAR(MAX)) 
         end  as PARAMTER
 --      cast([PARAMETER_NAME] + ' = ' + [PARAMETER_NAME] + case when PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as VARCHAR(MAX)) as PARAMTER
-,		cast([PARAMETER_NAME] + '  ' + P.DATA_TYPE+coalesce('('+case when P.CHARACTER_MAXIMUM_LENGTH = -1 then 'max' else cast(P.CHARACTER_MAXIMUM_LENGTH as varchar) end+')','') + CHAR(10) as VARCHAR(MAX)) as DECLARATION
+,		cast([PARAMETER_NAME] + '  ' + case when P.DATA_TYPE in ('ntext','text') then 'varchar' when P.DATA_TYPE in ('image') then 'varbinary' else P.DATA_TYPE end +coalesce('('+case when P.CHARACTER_MAXIMUM_LENGTH = -1 or P.CHARACTER_MAXIMUM_LENGTH > 8000 then 'max' else cast(P.CHARACTER_MAXIMUM_LENGTH as varchar) end+')','') + CHAR(10) as VARCHAR(MAX)) as DECLARATION
 ,       R.[SPECIFIC_CATALOG]
 ,       R.[SPECIFIC_SCHEMA]
 ,       R.[SPECIFIC_NAME]
@@ -89,11 +91,11 @@ and     R.[SPECIFIC_CATALOG]        = P.[SPECIFIC_CATALOG]
 where   1=1 
 and     ORDINAL_POSITION = 1
 union all 
-select  cast(PARAMTER + ',' +   case when ROUTINE_TYPE = 'PROCEDURE' then cast(N.[PARAMETER_NAME] + ' = ' + N.[PARAMETER_NAME] + case when N.PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as VARCHAR(MAX)) 
-                                     when ROUTINE_TYPE = 'FUNCTION'  then cast(N.[PARAMETER_NAME] + CHAR(10) as VARCHAR(MAX)) 
+select  cast(PARAMTER + +char(10)+CHAR(9)+CHAR(9)+CHAR(9)+char(9)+CHAR(9)+CHAR(9)+CHAR(9)+CHAR(9)+',' + CHAR(9)+ CHAR(9) +   case when ROUTINE_TYPE = 'PROCEDURE' then cast(N.[PARAMETER_NAME] + ' = ' + N.[PARAMETER_NAME] + case when N.PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as VARCHAR(MAX)) 
+                                     when ROUTINE_TYPE = 'FUNCTION'  then cast(N.[PARAMETER_NAME] as VARCHAR(MAX)) 
                                 end as VARCHAR(MAX)) as PARAMTER                            
 --N.[PARAMETER_NAME] + ' = ' + N.[PARAMETER_NAME] + case when N.PARAMETER_MODE = 'IN' then '' else  ' OUTPUT' + CHAR(10) end as varchar(max))
-,		cast(DECLARATION + ',' + [PARAMETER_NAME] + '  ' + N.DATA_TYPE+coalesce('('+case when N.CHARACTER_MAXIMUM_LENGTH = -1 then 'max' else cast(N.CHARACTER_MAXIMUM_LENGTH as varchar) end +')','') + CHAR(10) as VARCHAR(MAX))
+,		cast(DECLARATION + CHAR(9)+',' + CHAR(9)+CHAR(9) + [PARAMETER_NAME] + '  ' + case when N.DATA_TYPE in ('ntext','text') then 'varchar' when N.DATA_TYPE in ('image') then 'varbinary' else N.DATA_TYPE end +coalesce('('+case when N.CHARACTER_MAXIMUM_LENGTH = -1 or N.CHARACTER_MAXIMUM_LENGTH > 8000 then 'max' else cast(N.CHARACTER_MAXIMUM_LENGTH as varchar) end +')','') + CHAR(10) as VARCHAR(MAX))
 ,       N.[SPECIFIC_CATALOG]
 ,       N.[SPECIFIC_SCHEMA]
 ,       N.[SPECIFIC_NAME]
@@ -119,8 +121,8 @@ from    BASE
 select * from ALLL where RN = 1
 )
 select  R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME as sp
-,	    case when ROUTINE_TYPE = 'FUNCTION' and DATA_TYPE != 'TABLE' 
-             then 'declare ' + coalesce(DECLARATION+',','') + '\@RC ' + DATA_TYPE+coalesce('('+cast(CHARACTER_MAXIMUM_LENGTH as varchar)+')','')
+,	case when ROUTINE_TYPE = 'FUNCTION' and DATA_TYPE != 'TABLE' 
+             then 'declare ' + coalesce(DECLARATION+char(9)+','+char(9)+char(9),'') + '\@RC ' + DATA_TYPE+coalesce('('+cast(CHARACTER_MAXIMUM_LENGTH as varchar)+')','')
              else coalesce('declare ' + DECLARATION,'')
         end as DECLARATION
 ,       case when ROUTINE_TYPE = 'PROCEDURE' then 'execute ' + R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME + ' ' + coalesce(B.PARAMTER,'') 
@@ -133,7 +135,7 @@ LEFT    JOIN    PARAMS B
 on      R.[SPECIFIC_NAME]           = B.[SPECIFIC_NAME]
 and     R.[SPECIFIC_SCHEMA]         = B.[SPECIFIC_SCHEMA]
 and     R.[SPECIFIC_CATALOG]        = B.[SPECIFIC_CATALOG]
-where   R.ROUTINE_TYPE in( 'PROCEDURE','FUNCTION')
+where   R.ROUTINE_TYPE              in( 'PROCEDURE','FUNCTION')
 
 EOF
 
@@ -142,12 +144,14 @@ EOF
 
 sub generateScripts {
 
-    local $_ = undef;
+    local $_            = undef;
+           
+    my $dbh             = shift ;
+    my $dbh_typeinfo    = shift ;
+    
+    my $dirs            = shift ;
 
-    my $dbh     = shift ;
-    my $dirs    = shift ;
-
-    croak "bad arg dbh"     unless defined $dbh;
+    croak "bad arg dbh" unless defined $dbh;
     my $database        = databaseName($dbh);
 
     no warnings;
@@ -158,15 +162,30 @@ sub generateScripts {
 #warn Dumper $ra_columns ;
 #exit ;
 
-    my $execs                   = ExecSp($dbh) ;
-
-
+    my $execs           = ExecSp($dbh) ;
 
 #warn Dumper     $widest_column_name_padding;
     foreach my $exec (@$execs) {
         
         my $file = $$exec[0];
-        my $text = Template($dbh, $$exec[0], $userName, $date, $$exec[1],$$exec[2] ) ;
+        
+        
+        my $checkText    = CheckForExceptions($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2] ) ;
+        
+        my $resultsTable = undef ;
+        if ( ! defined $checkText || $checkText eq q() ) {
+            $resultsTable = CheckForResults($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2] ) ;
+        }
+#warn Dumper $resultsTable;        
+        my $receivingTable = "" ; 
+        if (defined $resultsTable && scalar @$resultsTable eq 1 ) {
+            $receivingTable = do { local $"= "\n\t,\t\t" ; "\tdeclare \@ResultSet table\n\t(\t\t@$resultsTable[0] \n\t)" } ;
+        }
+        #elsif (scalar @$resultsTable gt 1 ) {
+        #    $receivingTable = "More than one set of results - can't capture them" } ;
+        #}
+#warn Dumper $$exec[2];        
+        my $text = Template($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2],$checkText,$receivingTable ) ;
         my $fh   = IO::File->new("> ${dirs}/${file}.sql") ;
        
         if (defined ${fh} ) {
@@ -183,9 +202,11 @@ exit;
 
 sub Template {
 
-    local $_ = undef;
+    local $_            = undef;
 
     my $dbh             = shift ;
+    my $dbh_typeinfo    = shift ;
+    
     my $sut             = shift ;
 
     my $userName        = shift ;
@@ -193,6 +214,20 @@ sub Template {
 
     my $declaration     = shift ;
     my $code            = shift ;
+
+    my $checkText       = shift ;
+    my $receivingTable  = shift ;
+    
+    if (defined $checkText) {
+        $checkText = "\t--\t Raises this error:- " . $checkText ;
+    }
+    else {
+        $checkText      = q();
+    }
+    if ($receivingTable ne '') {
+        $code = "insert into \@ResultSet\n\t" . $code ;
+    }
+    
     
 return <<"EOF";
 
@@ -225,7 +260,11 @@ begin try
 
     begin transaction
 
+${checkText}
+
     ${declaration}
+
+${receivingTable}    
 
     ${code}
     
@@ -254,6 +293,180 @@ EOF
 }
 
 
+sub CheckForExceptions {
+
+    local $_            = undef;
+
+    my $dbh             = shift ;
+    my $dbh_typeinfo    = shift ;
+    
+    my $sut             = shift ;
+
+    my $userName        = shift ;
+    my $date            = shift ;
+
+    my $declaration     = shift ;
+    my $code            = shift ;
+
+    my $sql             =  CheckForExceptionsSQL($declaration,$code) ;
+
+    my @run1_res ;
+    my @res_col ;
+    my @res_type ;
+    my $sth             = $dbh->prepare($sql,{odbc_exec_direct => 1});
+
+    try {
+        $sth->execute;
+    
+        do {
+            push @res_type, $sth->{TYPE} ;
+            push @res_col,  $sth->{NAME} ;
+    
+            no warnings;
+            push @run1_res, $sth->fetchall_arrayref() ;
+            use warnings;
+        } while ($sth->{odbc_more_results}) ;
+    } catch {
+         warn "SUT :- $sut\n";
+    };
+#warn Dumper @run1_res ;    
+    my $err = undef;
+    if ( scalar @run1_res && scalar @{$run1_res[0]} && $run1_res[0][0][0] eq 'VSGDR::TestScriptGen - raised exception') {
+        $err = $run1_res[0][0][1];
+    }
+#warn Dumper $err ;        
+    return $err;
+}
+                                    
+sub CheckForExceptionsSQL {
+
+    local $_            = undef;
+
+    my $declaration     = shift ;
+    my $code            = shift ;
+    
+return <<"EOF";
+
+
+set nocount on
+
+begin try
+
+    begin transaction
+
+    ${declaration}
+    ${code}
+    
+end try
+begin catch
+
+    select 'VSGDR::TestScriptGen - raised exception', error_message()
+
+end catch
+
+
+if \@\@trancount > 0
+    rollback
+
+
+EOF
+
+}
+
+sub CheckForResults {
+
+    local $_            = undef;
+
+    my $dbh             = shift ;
+    my $dbh_typeinfo    = shift ;
+    
+    my $sut             = shift ;
+
+    my $userName        = shift ;
+    my $date            = shift ;
+
+    my $declaration     = shift ;
+    my $code            = shift ;
+
+    my $sql             =  CheckForResultsSQL($declaration,$code) ;
+
+    my @run1_res ;
+    my @res_col ;
+    my @res_type ;
+    my $sth             = $dbh->prepare($sql,{odbc_exec_direct => 1});
+
+    try {
+        $sth->execute;
+    
+        do {
+            push @res_type, $sth->{TYPE} ;
+            push @res_col,  $sth->{NAME} ;
+
+            my @names   = map { scalar $dbh_typeinfo->type_info($_)->{TYPE_NAME} }   @{ $sth->{TYPE} } ;
+            my @colSize = map { scalar $dbh_typeinfo->type_info($_)->{COLUMN_SIZE} } @{ $sth->{TYPE} } ;
+
+            my @types = () ;
+            my @spec  = () ;
+#warn Dumper $sth->{TYPE} ;        
+            if (scalar @names) {
+                @types = List::MoreUtils::pairwise { $a =~ m{char|binary}ism ? "$a($b)" : "$a" }  @names, @colSize ;
+                @spec  = List::MoreUtils::pairwise { "$a\t\t\t$b" }  @{$sth->{NAME}}, @types ;
+            }
+
+#warn Dumper @spec;
+        
+            #do { local $"= "\n,\t" ;
+            #     say {*STDERR} "ResultSet(\n\t@{spec}\n)";
+            #   };
+        
+            no warnings;
+            push @run1_res, @spec ;
+            use warnings;
+
+
+        } while ($sth->{odbc_more_results}) ;
+    } catch {
+         warn "SUT :- $sut\n";
+    };
+
+    return \@run1_res;
+}
+
+
+sub CheckForResultsSQL {
+
+    local $_            = undef;
+
+    my $declaration     = shift ;
+    my $code            = shift ;
+    
+return <<"EOF";
+
+
+set nocount on
+
+begin try
+
+    begin transaction
+
+    ${declaration}
+    ${code}
+    
+end try
+begin catch
+
+    select 'VSGDR::TestScriptGen - raised exception', error_message()
+
+end catch
+
+
+if \@\@trancount > 0
+    rollback
+
+
+EOF
+
+}
 
 
 __DATA__
