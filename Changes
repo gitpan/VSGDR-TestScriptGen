@@ -8,3 +8,5 @@ Revision history for VSGDR::TestScriptGen
         Handles varchar(max)
 0.04    16/06/2014
         Defaults values fon non-nullable parameters.  Better formatting of output.
+0.05    25/06/2014
+        Strawberry Perl login name implemented.

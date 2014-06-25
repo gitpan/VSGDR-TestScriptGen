@@ -11,6 +11,7 @@ use POSIX qw(strftime);
 use Carp;
 use DBI;
 use Data::Dumper;
+use English;
 use IO::File ;
 use File::Basename;
 use Try::Tiny;
@@ -21,11 +22,11 @@ VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded
 
 =head1 VERSION
 
-Version 0.04
+Version 0.05
 
 =cut
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 
 sub databaseName {
@@ -155,10 +156,10 @@ sub generateScripts {
     my $database        = databaseName($dbh);
 
     no warnings;
-    my $userName        = @{[getpwuid( $< )]}->[6]; $userName =~ s/,.*//;
+    my $userName        = $OSNAME eq 'MSWin32' ? Win32::LoginName : @{[getpwuid( $< )]}->[6]; $userName =~ s/,.*//;
     use warnings;
     my $date            = strftime "%d/%m/%Y", localtime;
-    
+#warn Dumper $userName ;    
 #warn Dumper $ra_columns ;
 #exit ;
 
