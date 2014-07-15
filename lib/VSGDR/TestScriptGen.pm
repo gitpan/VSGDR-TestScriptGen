@@ -22,11 +22,11 @@ VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =cut
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 
 sub databaseName {
@@ -149,10 +149,14 @@ sub generateScripts {
            
     my $dbh             = shift ;
     my $dbh_typeinfo    = shift ;
-    
     my $dirs            = shift ;
+    my $runChecks       = shift ;
 
-    croak "bad arg dbh" unless defined $dbh;
+    croak "bad arg dbh"             unless defined $dbh;
+    croak "bad arg dbh_typeinfo"    unless defined $dbh_typeinfo;
+    croak "bad arg dirs"            unless defined $dirs;
+    croak "bad arg runChecks"       unless defined $runChecks;
+    
     my $database        = databaseName($dbh);
 
     no warnings;
@@ -170,24 +174,30 @@ sub generateScripts {
         
         my $file = $$exec[0];
         
-        
-        my $checkText    = CheckForExceptions($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2] ) ;
-        
-        my $resultsTable = undef ;
-        if ( ! defined $checkText || $checkText eq q() ) {
-            $resultsTable = CheckForResults($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2] ) ;
-        }
-#warn Dumper $resultsTable;        
+        my $checkText    = "";
         my $receivingTable = "" ; 
-        if (defined $resultsTable && scalar @$resultsTable eq 1 ) {
-            $receivingTable = do { local $"= "\n\t,\t\t" ; "\tdeclare \@ResultSet table\n\t(\t\t@$resultsTable[0] \n\t)" } ;
-        }
-        #elsif (scalar @$resultsTable gt 1 ) {
-        #    $receivingTable = "More than one set of results - can't capture them" } ;
-        #}
-#warn Dumper $$exec[2];        
+
+        if ( $runChecks ) {
+        
+            $checkText    = CheckForExceptions($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2] ) ;
+            
+            my $resultsTable = undef ;
+            if ( ! defined $checkText || $checkText eq q() ) {
+                $resultsTable = CheckForResults($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2] ) ;
+            }
+#warn Dumper $resultsTable;        
+            if (defined $resultsTable && scalar @$resultsTable eq 1 ) {
+                $receivingTable = do { local $"= "\n\t,\t\t" ; "\tdeclare \@ResultSet table\n\t(\t\t@$resultsTable[0] \n\t)" } ;
+            }
+            #elsif (scalar @$resultsTable gt 1 ) {
+            #    $receivingTable = "More than one set of results - can't capture them" } ;
+            #}
+#warn Dumper $$exec[2];
+        } ;
+
         my $text = Template($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2],$checkText,$receivingTable ) ;
-        my $fh   = IO::File->new("> ${dirs}/${file}.sql") ;
+        (my $fileName = "${file}.sql" ) =~ s{[.]}{_} ;
+        my $fh   = IO::File->new("> ${dirs}/${fileName}") ;
        
         if (defined ${fh} ) {
             print {${fh}} $text ;

@@ -39,7 +39,7 @@
             "English" : "0",
             "File::Basename" : "0",
             "Getopt::Euclid" : "0",
-            "IO::File" : "0",
+            "IO::Dir" : "0",
             "List::MoreUtils" : "0",
             "List::Util" : "1",
             "POSIX" : "0",
@@ -54,5 +54,5 @@
       }
    },
    "release_status" : "stable",
-   "version" : "0.05"
+   "version" : "0.06"
 }

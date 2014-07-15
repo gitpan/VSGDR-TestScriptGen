@@ -12,27 +12,32 @@ use DBI;
 
 
 use Getopt::Euclid qw( :vars<opt_> );
+our $opt_noTestRun ;
+our $opt_outdir;
+our $opt_connection ;
+
 use Data::Dumper;
 use VSGDR::TestScriptGen;
 
-use IO::File ;
+use IO::Dir ;
 use File::Basename;
 
 
-use version ; our $VERSION = qv('0.02');
+use version ; our $VERSION = qv('0.03');
 
-croak 'no input file'           unless defined($main::opt_outfile) ;
-my $outfile;
-$outfile                                = $main::opt_outfile;
-my($infname, $directories, $insfx)      = fileparse($outfile , qr/\..*/);
-croak 'Invalid input file'      unless defined $insfx ;
+croak 'no output directory'             unless defined($opt_outdir) ;
+do  { 
+    my $iodir = IO::Dir->new($opt_outdir);
+    croak "Invalid directory:- $opt_outdir" unless defined $iodir;
+    };
+my $dbh                                 = DBI->connect("dbi:ODBC:${opt_connection}", q{}, q{}, { LongReadLen => 512000, AutoCommit => 1, RaiseError => 1 });
+my $dbh_typeinfo                        = DBI->connect("dbi:ODBC:${opt_connection}", q{}, q{}, { LongReadLen => 512000, AutoCommit => 1, RaiseError => 1 });
 
-my $dbh                                 = DBI->connect("dbi:ODBC:${main::opt_connection}", q{}, q{}, { LongReadLen => 512000, AutoCommit => 1, RaiseError => 1 });
-my $dbh_typeinfo                        = DBI->connect("dbi:ODBC:${main::opt_connection}", q{}, q{}, { LongReadLen => 512000, AutoCommit => 1, RaiseError => 1 });
+my $RunChecks         = 1 ;
+$RunChecks            = (!$opt_noTestRun)    if defined $opt_noTestRun ;
 
 
-
-my $void = VSGDR::TestScriptGen::generateScripts($dbh,$dbh_typeinfo,$directories) ;
+my $void = VSGDR::TestScriptGen::generateScripts($dbh,$dbh_typeinfo,$opt_outdir,$RunChecks) ;
 
 
 exit ;
@@ -54,7 +59,7 @@ genTests.pl - Creates unit test scripts for a database
 
 =head1 VERSION
 
-0.02
+0.03
 
 
 =head1 USAGE
@@ -71,12 +76,12 @@ genTests.pl --c <odbc connection> [options]
 Specify ODBC connection for Test script
 
 
-=item  -o[ut][file]  [=]<file>
+=item  -o[ut][dir]  [=]<dir>
 
-Specify output file (directory)
+Specify output directory
 
 =for Euclid:
-    file.type:    writable
+    dir.type:    writable
 
 
 
@@ -87,6 +92,14 @@ Specify output file (directory)
 =head1 OPTIONS
 
 =over
+
+=item  --[no]TestRun
+ 
+[Don't] run a test run during generation (in order to determine result shape).
+ 
+=for Euclid:
+    false: --noTestRun
+ 
 
 
 =back

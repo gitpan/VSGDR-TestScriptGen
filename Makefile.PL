@@ -24,7 +24,7 @@ WriteMakefile(
         'English'               => 0,
         'File::Basename'        => 0,
         'Getopt::Euclid'        => 0,
-        'IO::File'              => 0,
+        'IO::Dir'               => 0,
         'List::Util'            => 1.00,
         'List::MoreUtils'       => 0,
         'POSIX'                 => 0,
