@@ -12,3 +12,5 @@ Revision history for VSGDR::TestScriptGen
         Strawberry Perl login name implemented.
 0.06    15/07/2014
         Added option to not run tests on generation.  Improved testfilename generation.  Switched to using IO::Dir from IO::File
+0.07    11/08/2014
+        Kwalitee changes.

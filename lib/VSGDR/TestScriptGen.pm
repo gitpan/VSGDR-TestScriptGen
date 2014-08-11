@@ -22,11 +22,11 @@ VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded
 
 =head1 VERSION
 
-Version 0.06
+Version 0.07
 
 =cut
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 
 sub databaseName {

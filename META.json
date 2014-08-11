@@ -1,10 +1,10 @@
 {
-   "abstract" : "Unit test script support package for SSDT unit tests, Ded MedVed.\r",
+   "abstract" : "Unit test script support package for SSDT unit tests, Ded MedVed.",
    "author" : [
       "Ded MedVed <dedmedved@cpan>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "ExtUtils::MakeMaker version 6.98, CPAN::Meta::Converter version 2.120921",
    "license" : [
       "perl_5"
    ],
@@ -48,11 +48,11 @@
             "Win32" : "0",
             "autodie" : "0",
             "indirect" : "0",
-            "perl" : "0",
+            "perl" : "5.010000",
             "version" : "0"
          }
       }
    },
    "release_status" : "stable",
-   "version" : "0.06"
+   "version" : "0.07"
 }
