@@ -22,11 +22,11 @@ VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded
 
 =head1 VERSION
 
-Version 0.09
+Version 0.10
 
 =cut
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
 
 sub databaseName {
@@ -430,7 +430,7 @@ sub CheckForResults {
 #warn Dumper $sth->{NUM_OF_FIELDS} ;        
             if (scalar @names) {
                 @types = List::MoreUtils::pairwise { $a =~ m{char|binary}ism ? "$a($b)" : "$a" }  @names, @colSize ;
-                @spec  = List::MoreUtils::pairwise { "$a\t\t\t$b" }  @{$sth->{NAME}}, @types ;
+                @spec  = List::MoreUtils::pairwise { "[$a]\t\t\t$b" }  @{$sth->{NAME}}, @types ;
             }
 
 #warn Dumper @spec;

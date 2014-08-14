@@ -18,3 +18,5 @@ Revision history for VSGDR::TestScriptGen
         Quoted sp/fn references in output.
 0.09    13/08/2014
         Fixed generation of test results tables.
+0.10    13/08/2014
+        Quoted temp table column names.        
