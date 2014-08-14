@@ -22,11 +22,11 @@ VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded
 
 =head1 VERSION
 
-Version 0.08
+Version 0.09
 
 =cut
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 
 sub databaseName {
@@ -181,23 +181,30 @@ sub generateScripts {
         if ( $runChecks ) {
         
             $checkText    = CheckForExceptions($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2] ) ;
-            
+
             my $resultsTable = undef ;
             if ( ! defined $checkText || $checkText eq q() ) {
                 $resultsTable = CheckForResults($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2] ) ;
             }
-#warn Dumper $resultsTable;        
+#warn Dumper "--------------------------";            
+#warn Dumper $resultsTable;
+#warn Dumper scalar @$resultsTable ;
+#warn Dumper @{$resultsTable->[0]};
             if (defined $resultsTable && scalar @$resultsTable eq 1 ) {
-                $receivingTable = do { local $"= "\n\t,\t\t" ; "\tdeclare \@ResultSet table\n\t(\t\t@$resultsTable[0] \n\t)" } ;
+                $receivingTable = do { local $"= "\n\t,\t\t" ; "\tdeclare \@ResultSet table\n\t(\t\t@{$resultsTable->[0]} \n\t)" } ;
+#                $receivingTable = do { local $"= "\n\t,\t\t" ; "@{$resultsTable->[0]}" } ;
             }
             #elsif (scalar @$resultsTable gt 1 ) {
             #    $receivingTable = "More than one set of results - can't capture them" } ;
             #}
+#warn Dumper $receivingTable ;         
 #warn Dumper $$exec[2];
         } ;
 
         my $text = Template($dbh, $dbh_typeinfo, $$exec[0], $userName, $date, $$exec[1],$$exec[2],$checkText,$receivingTable ) ;
         (my $fileName = "${file}.sql" ) =~ s{[.]}{_} ;
+        $fileName =~ s{[\]\[]}{}g ;
+        $fileName =~ s{\s}{}g ;
         my $fh   = IO::File->new("> ${dirs}/${fileName}") ;
        
         if (defined ${fh} ) {
@@ -420,6 +427,7 @@ sub CheckForResults {
             my @types = () ;
             my @spec  = () ;
 #warn Dumper $sth->{TYPE} ;        
+#warn Dumper $sth->{NUM_OF_FIELDS} ;        
             if (scalar @names) {
                 @types = List::MoreUtils::pairwise { $a =~ m{char|binary}ism ? "$a($b)" : "$a" }  @names, @colSize ;
                 @spec  = List::MoreUtils::pairwise { "$a\t\t\t$b" }  @{$sth->{NAME}}, @types ;
@@ -432,7 +440,7 @@ sub CheckForResults {
             #   };
         
             no warnings;
-            push @run1_res, @spec ;
+            push @run1_res, \@spec ;
             use warnings;
 
 
