@@ -14,3 +14,5 @@ Revision history for VSGDR::TestScriptGen
         Added option to not run tests on generation.  Improved testfilename generation.  Switched to using IO::Dir from IO::File
 0.07    11/08/2014
         Kwalitee changes.
+0.08    13/08/2014
+        Quoted sp/fn references in output.

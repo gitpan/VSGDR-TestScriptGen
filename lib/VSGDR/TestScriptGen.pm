@@ -22,11 +22,11 @@ VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded
 
 =head1 VERSION
 
-Version 0.07
+Version 0.08
 
 =cut
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 
 sub databaseName {
@@ -121,14 +121,14 @@ from    BASE
 , PARAMS as (
 select * from ALLL where RN = 1
 )
-select  R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME as sp
+select  '[' + R.SPECIFIC_SCHEMA + '].[' + R.SPECIFIC_NAME +']' as sp
 ,	case when ROUTINE_TYPE = 'FUNCTION' and DATA_TYPE != 'TABLE' 
              then 'declare ' + coalesce(DECLARATION+char(9)+','+char(9)+char(9),'') + '\@RC ' + DATA_TYPE+coalesce('('+cast(CHARACTER_MAXIMUM_LENGTH as varchar)+')','')
              else coalesce('declare ' + DECLARATION,'')
         end as DECLARATION
-,       case when ROUTINE_TYPE = 'PROCEDURE' then 'execute ' + R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME + ' ' + coalesce(B.PARAMTER,'') 
-             when ROUTINE_TYPE = 'FUNCTION' and DATA_TYPE = 'TABLE'  then 'select * from ' + R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME + '(' + coalesce(B.PARAMTER,'')  + ')'
-             when ROUTINE_TYPE = 'FUNCTION' and DATA_TYPE != 'TABLE' then 'select \@RC = ' + R.SPECIFIC_SCHEMA + '.' + R.SPECIFIC_NAME + '(' + coalesce(B.PARAMTER,'')  + ')'
+,       case when ROUTINE_TYPE = 'PROCEDURE' then 'execute [' + R.SPECIFIC_SCHEMA + '].[' + R.SPECIFIC_NAME + '] ' + coalesce(B.PARAMTER,'') 
+             when ROUTINE_TYPE = 'FUNCTION' and DATA_TYPE = 'TABLE'  then 'select * from [' + R.SPECIFIC_SCHEMA + '].[' + R.SPECIFIC_NAME + '](' + coalesce(B.PARAMTER,'')  + ')'
+             when ROUTINE_TYPE = 'FUNCTION' and DATA_TYPE != 'TABLE' then 'select \@RC = [' + R.SPECIFIC_SCHEMA + '].[' + R.SPECIFIC_NAME + '](' + coalesce(B.PARAMTER,'')  + ')'
              else '-- unknown routine type'
         end as sql 
 from    INFORMATION_SCHEMA.ROUTINES R
@@ -137,6 +137,7 @@ on      R.[SPECIFIC_NAME]           = B.[SPECIFIC_NAME]
 and     R.[SPECIFIC_SCHEMA]         = B.[SPECIFIC_SCHEMA]
 and     R.[SPECIFIC_CATALOG]        = B.[SPECIFIC_CATALOG]
 where   R.ROUTINE_TYPE              in( 'PROCEDURE','FUNCTION')
+
 
 EOF
 
