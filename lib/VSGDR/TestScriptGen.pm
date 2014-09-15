@@ -22,11 +22,11 @@ VSGDR::TestScriptGen - Unit test script support package for SSDT unit tests, Ded
 
 =head1 VERSION
 
-Version 0.10
+Version 0.11
 
 =cut
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 
 sub databaseName {
@@ -190,7 +190,7 @@ sub generateScripts {
 #warn Dumper $resultsTable;
 #warn Dumper scalar @$resultsTable ;
 #warn Dumper @{$resultsTable->[0]};
-            if (defined $resultsTable && scalar @$resultsTable eq 1 ) {
+            if (defined $resultsTable && scalar @$resultsTable eq 1  && scalar @{$resultsTable->[0]} gt 0 ) {
                 $receivingTable = do { local $"= "\n\t,\t\t" ; "\tdeclare \@ResultSet table\n\t(\t\t@{$resultsTable->[0]} \n\t)" } ;
 #                $receivingTable = do { local $"= "\n\t,\t\t" ; "@{$resultsTable->[0]}" } ;
             }
@@ -488,6 +488,9 @@ EOF
 
 }
 
+
+
+1;
 
 __DATA__
 

@@ -19,4 +19,6 @@ Revision history for VSGDR::TestScriptGen
 0.09    13/08/2014
         Fixed generation of test results tables.
 0.10    13/08/2014
-        Quoted temp table column names.        
+        Quoted temp table column names.
+0.11    15/09/2014
+        Fixed 'empty' output table generation bug.
